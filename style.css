@@ -1,64 +1,93 @@
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0b132b;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
 }
 
+/* Glass container */
 .container {
-  width: 400px;
-  height: 600px;
-  background: #1c2541;
-  border-radius: 15px;
-  padding: 15px;
+  width: 420px;
+  height: 650px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
 }
 
+/* Title */
 h2 {
   text-align: center;
   color: #00f5d4;
+  margin-bottom: 10px;
 }
 
+/* Chat area */
 #chat {
   flex: 1;
   overflow-y: auto;
-  margin: 10px 0;
-}
-
-.msg {
   padding: 10px;
-  margin: 5px 0;
-  border-radius: 10px;
 }
 
+/* Messages */
+.msg {
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 12px;
+  max-width: 75%;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* User message */
 .user {
-  background: #00f5d4;
+  background: linear-gradient(135deg, #00f5d4, #00bbf9);
   color: black;
   align-self: flex-end;
 }
 
+/* Bot message */
 .bot {
-  background: #3a506b;
+  background: rgba(255, 255, 255, 0.1);
   color: white;
 }
 
+/* Input area */
 .input-area {
   display: flex;
+  margin-top: 10px;
 }
 
 input {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
+  border-radius: 10px;
   border: none;
+  outline: none;
 }
 
 button {
-  padding: 10px;
+  margin-left: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
   border: none;
   background: #00f5d4;
   cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #00bbf9;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(10px);}
+  to {opacity: 1; transform: translateY(0);}
 }
