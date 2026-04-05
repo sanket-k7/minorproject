@@ -7,6 +7,9 @@ async function sendMessage() {
     addMessage(text, "user");
     input.value = "";
 
+    // Show loading
+    let loading = addMessage("⏳ Thinking...", "bot");
+
     try {
         let res = await fetch("https://health-chatbot-4xf6.onrender.com/chat", {
             method: "POST",
@@ -18,12 +21,17 @@ async function sendMessage() {
 
         let data = await res.json();
 
-        console.log(data); // debug
+        loading.remove(); // remove loading
 
-        addMessage(data.response, "bot");
+        if (data.response) {
+            addMessage(data.response, "bot");
+        } else {
+            addMessage("⚠️ No response from server", "bot");
+        }
 
     } catch (error) {
-        addMessage("⚠️ Error connecting to server", "bot");
+        loading.remove();
+        addMessage("❌ Server error / slow startup (wait 30 sec and try again)", "bot");
         console.error(error);
     }
 }
@@ -34,4 +42,5 @@ function addMessage(text, type) {
     div.innerText = text;
 
     document.getElementById("chat").appendChild(div);
+    return div;
 }
