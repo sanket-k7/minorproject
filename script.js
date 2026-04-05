@@ -7,14 +7,14 @@ async function send() {
     addMessage(text, "user");
     input.value = "";
 
-    let res = await fetch("http://127.0.0.1:5000/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: text})
-    });
+    let res = await fetch("https://health-chatbot-4xf6.onrender.com/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({message: text})
+});
 
-    let data = await res.json();
-    addMessage(data.response, "bot");
+let data = await res.json();
+addMessage(data.response, "bot");
 }
 
 function addMessage(text, type) {
