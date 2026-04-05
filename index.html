@@ -1,22 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>AI Health Bot</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>AI Health Assistant</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="container">
-    <div class="header">💊 AI Health Assistant</div>
-    <div id="chat"></div>
+  <h2>💊 AI Health Assistant</h2>
 
-    <div class="input">
-        <input id="msg" placeholder="Type symptoms...">
-        <button onclick="send()">Send</button>
-    </div>
+  <div id="chat"></div>
+
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Type symptoms...">
+    <button onclick="sendMessage()">Send</button>
+  </div>
 </div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
