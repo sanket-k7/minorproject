@@ -2,17 +2,20 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 import numpy as np
-import re
-from difflib import get_close_matches
-from sklearn.ensemble import RandomForestClassifier
-from sklearn import preprocessing
 import csv
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 
 app = Flask(__name__)
 CORS(app)
 
 # ------------------ LOAD DATA ------------------
-training = pd.read_csv('Data/Training.csv')
+try:
+    training = pd.read_csv('Data/Training.csv')
+except:
+    training = pd.read_csv('Data/training.csv')  # fallback
+
+# Clean duplicate columns
 training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
 training = training.loc[:, ~training.columns.duplicated()]
 
@@ -20,30 +23,39 @@ cols = training.columns[:-1]
 x = training[cols]
 y = training['prognosis']
 
-le = preprocessing.LabelEncoder()
+# Encode labels
+le = LabelEncoder()
 y = le.fit_transform(y)
 
-model = RandomForestClassifier(n_estimators=200, random_state=42)
+# Train model ONCE (fast)
+model = RandomForestClassifier(n_estimators=100, random_state=42)
 model.fit(x, y)
 
+# Symptom index mapping
 symptoms_dict = {symptom: idx for idx, symptom in enumerate(cols)}
 
-# ------------------ EXTRA DATA ------------------
+# ------------------ LOAD EXTRA FILES ------------------
 description_list = {}
-precautionDictionary = {}
+precaution_dict = {}
 
-def load_data():
-    with open('MasterData/symptom_Description.csv') as f:
-        for row in csv.reader(f):
-            description_list[row[0]] = row[1]
+def load_metadata():
+    try:
+        with open('MasterData/symptom_Description.csv') as f:
+            for row in csv.reader(f):
+                description_list[row[0]] = row[1]
+    except:
+        pass
 
-    with open('MasterData/symptom_precaution.csv') as f:
-        for row in csv.reader(f):
-            precautionDictionary[row[0]] = [row[1], row[2], row[3], row[4]]
+    try:
+        with open('MasterData/symptom_precaution.csv') as f:
+            for row in csv.reader(f):
+                precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
+    except:
+        pass
 
-load_data()
+load_metadata()
 
-# ------------------ SYMPTOM EXTRACT ------------------
+# ------------------ EXTRACT SYMPTOMS ------------------
 def extract_symptoms(text):
     text = text.lower()
     found = []
@@ -54,7 +66,7 @@ def extract_symptoms(text):
 
     return list(set(found))
 
-# ------------------ PREDICT ------------------
+# ------------------ PREDICTION ------------------
 def predict_disease(symptoms):
     input_vector = np.zeros(len(symptoms_dict))
 
@@ -67,41 +79,45 @@ def predict_disease(symptoms):
 
     return disease
 
-# ------------------ API ------------------
+# ------------------ API ROUTE ------------------
 @app.route('/chat', methods=['POST'])
 def chat():
-    data = request.json
-    message = data.get("message")
+    try:
+        data = request.get_json()
+        message = data.get("message", "")
 
-    if not message:
-        return jsonify({"response": "Please enter symptoms"})
+        if not message.strip():
+            return jsonify({"response": "⚠️ Please enter symptoms"})
 
-    symptoms = extract_symptoms(message)
+        symptoms = extract_symptoms(message)
 
-    if not symptoms:
-        return jsonify({"response": "No symptoms detected"})
+        if not symptoms:
+            return jsonify({"response": "❌ No symptoms detected. Try again."})
 
-    disease = predict_disease(symptoms)
+        disease = predict_disease(symptoms)
 
-    desc = description_list.get(disease, "No description available.")
-    precautions = precautionDictionary.get(disease, [])
+        description = description_list.get(disease, "No description available.")
+        precautions = precaution_dict.get(disease, [])
 
-    response_text = f"""
+        response = f"""
 🦠 Disease: {disease}
 
-📖 {desc}
+📖 {description}
 
 🛡️ Precautions:
-{', '.join(precautions)}
+{', '.join(precautions) if precautions else 'No precautions found'}
 """
 
-    return jsonify({"response": response_text})
+        return jsonify({"response": response})
 
+    except Exception as e:
+        return jsonify({"response": f"❌ Error: {str(e)}"})
 
+# ------------------ HEALTH CHECK ------------------
 @app.route('/')
 def home():
-    return "Backend is running 🚀"
+    return "✅ Backend running successfully"
 
-
-if __name__ == "__main__":
+# ------------------ RUN ------------------
+if __name__ == '__main__':
     app.run(debug=True)
