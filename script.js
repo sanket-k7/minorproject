@@ -10,7 +10,7 @@ async function sendMessage() {
     let loading = addMessage("⏳ Thinking...", "bot");
 
     try {
-        let res = await fetch("https://health-chatbot-4xf6.onrender.com/chat", {
+        let res = await fetch("https://health-chatbot-4xf6.onrender.com", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
