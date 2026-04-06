@@ -3,35 +3,19 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 import csv
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+import pickle
 
 app = Flask(__name__)
 CORS(app)
 
-# ------------------ LOAD DATA ------------------
-try:
-    training = pd.read_csv('Data/Training.csv')
-except:
-    training = pd.read_csv('Data/training.csv')  # fallback
+# ------------------ LOAD MODEL ------------------
+model = pickle.load(open("model.pkl", "rb"))
+le = pickle.load(open("label_encoder.pkl", "rb"))
 
-# Clean duplicate columns
-training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
-training = training.loc[:, ~training.columns.duplicated()]
-
+# ------------------ LOAD DATA (for symptoms list only) ------------------
+training = pd.read_csv('Data/Training.csv')
 cols = training.columns[:-1]
-x = training[cols]
-y = training['prognosis']
 
-# Encode labels
-le = LabelEncoder()
-y = le.fit_transform(y)
-
-# Train model ONCE (fast)
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(x, y)
-
-# Symptom index mapping
 symptoms_dict = {symptom: idx for idx, symptom in enumerate(cols)}
 
 # ------------------ LOAD EXTRA FILES ------------------
@@ -79,7 +63,7 @@ def predict_disease(symptoms):
 
     return disease
 
-# ------------------ API ROUTE ------------------
+# ------------------ API ------------------
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
@@ -92,7 +76,7 @@ def chat():
         symptoms = extract_symptoms(message)
 
         if not symptoms:
-            return jsonify({"response": "❌ No symptoms detected. Try again."})
+            return jsonify({"response": "❌ No symptoms detected"})
 
         disease = predict_disease(symptoms)
 
@@ -113,10 +97,10 @@ def chat():
     except Exception as e:
         return jsonify({"response": f"❌ Error: {str(e)}"})
 
-# ------------------ HEALTH CHECK ------------------
+# ------------------ HOME ------------------
 @app.route('/')
 def home():
-    return "✅ Backend running successfully"
+    return "✅ Backend running fast 🚀"
 
 # ------------------ RUN ------------------
 if __name__ == '__main__':
