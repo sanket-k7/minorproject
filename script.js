@@ -7,47 +7,33 @@ async function sendMessage() {
     addMessage(text, "user");
     input.value = "";
 
-    // Show loading
     let loading = addMessage("⏳ Thinking...", "bot");
 
     try {
-       let res = await fetch("https://health-chatbot-4xf6.onrender.com/predict", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ message: text })
-});
+        let res = await fetch("https://health-chatbot-4xf6.onrender.com/predict", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: text })
+        });
 
-let data = await res.json();
+        let data = await res.json();   // ✅ ONLY ONCE
 
-addMessage(
-    "🦠 Disease: " + data.result + "\n📊 Confidence: " + data.confidence + "%", 
-    "bot"
-);
+        loading.remove();
 
-        let data = await res.json();
-
-        loading.remove(); // remove loading
-
-        if (data.response) {
-            addMessage(data.response, "bot");
+        if (data.result) {
+            addMessage(
+                "🦠 Disease: " + data.result + "\n📊 Confidence: " + data.confidence + "%", 
+                "bot"
+            );
         } else {
             addMessage("⚠️ No response from server", "bot");
         }
 
     } catch (error) {
         loading.remove();
-        addMessage("❌ Server error / slow startup (wait 30 sec and try again)", "bot");
+        addMessage("❌ Server slow / starting (wait 30 sec)", "bot");
         console.error(error);
     }
-}
-
-function addMessage(text, type) {
-    let div = document.createElement("div");
-    div.className = "msg " + type;
-    div.innerText = text;
-
-    document.getElementById("chat").appendChild(div);
-    return div;
 }
