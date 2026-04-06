@@ -30,29 +30,16 @@ async function sendMessage() {
 
     } catch (error) {
         loading.remove();
-        addMessage("❌ Server error or slow startup", "bot");
+        addMessage("❌ Server error (wait 30 sec and try again)", "bot");
         console.error(error);
     }
 }
 
-// Add message to UI
 function addMessage(text, type) {
     let div = document.createElement("div");
     div.className = "msg " + type;
     div.innerText = text;
 
     document.getElementById("chat").appendChild(div);
-
-    // Auto scroll
-    document.getElementById("chat").scrollTop =
-        document.getElementById("chat").scrollHeight;
-
     return div;
 }
-
-// ENTER KEY SUPPORT 🔥
-document.getElementById("userInput").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        sendMessage();
-    }
-});
