@@ -8,11 +8,15 @@ import pickle
 app = Flask(__name__)
 CORS(app)
 
+print("🚀 Server starting...")
+
 # ------------------ LOAD MODEL ------------------
 model = pickle.load(open("model.pkl", "rb"))
 le = pickle.load(open("label_encoder.pkl", "rb"))
 
-# ------------------ LOAD DATA (for symptoms list only) ------------------
+print("✅ Model loaded successfully")
+
+# ------------------ LOAD DATA ------------------
 training = pd.read_csv('Data/Training.csv')
 cols = training.columns[:-1]
 
@@ -28,14 +32,14 @@ def load_metadata():
             for row in csv.reader(f):
                 description_list[row[0]] = row[1]
     except:
-        pass
+        print("⚠️ Description file missing")
 
     try:
         with open('MasterData/symptom_precaution.csv') as f:
             for row in csv.reader(f):
                 precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
     except:
-        pass
+        print("⚠️ Precaution file missing")
 
 load_metadata()
 
@@ -95,7 +99,8 @@ def chat():
         return jsonify({"response": response})
 
     except Exception as e:
-        return jsonify({"response": f"❌ Error: {str(e)}"})
+        print("❌ ERROR:", e)
+        return jsonify({"response": "❌ Server error"})
 
 # ------------------ HOME ------------------
 @app.route('/')
