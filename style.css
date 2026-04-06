@@ -91,3 +91,6 @@ button:hover {
   from {opacity: 0; transform: translateY(10px);}
   to {opacity: 1; transform: translateY(0);}
 }
+.msg.bot {
+  white-space: pre-line;
+}
