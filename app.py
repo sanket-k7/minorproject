@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import csv
 import pickle
+import csv
 
 # ------------------ LOAD MODEL ------------------
 model = pickle.load(open("model.pkl", "rb"))
@@ -15,28 +15,24 @@ training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
 training = training.loc[:, ~training.columns.duplicated()]
 
 cols = training.columns[:-1]
-symptoms_dict = {symptom: idx for idx, symptom in enumerate(cols)}
 
 # ------------------ LOAD METADATA ------------------
 description_list = {}
 precaution_dict = {}
 
-def load_metadata():
-    try:
-        with open('MasterData/symptom_Description.csv') as f:
-            for row in csv.reader(f):
-                description_list[row[0]] = row[1]
-    except:
-        pass
+try:
+    with open('MasterData/symptom_Description.csv') as f:
+        for row in csv.reader(f):
+            description_list[row[0]] = row[1]
+except:
+    pass
 
-    try:
-        with open('MasterData/symptom_precaution.csv') as f:
-            for row in csv.reader(f):
-                precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
-    except:
-        pass
-
-load_metadata()
+try:
+    with open('MasterData/symptom_precaution.csv') as f:
+        for row in csv.reader(f):
+            precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
+except:
+    pass
 
 # ------------------ SYNONYMS ------------------
 symptom_synonyms = {
@@ -44,38 +40,38 @@ symptom_synonyms = {
     "cold": "chills",
     "cough": "cough",
     "headache": "headache",
-    "stomach pain": "stomach_pain",
-    "breathing problem": "breathlessness",
+    "breath": "breathlessness",
     "shortness of breath": "breathlessness",
     "body pain": "muscle_pain"
 }
 
-# ------------------ EXTRACT SYMPTOMS ------------------
+# ------------------ EXTRACT ------------------
 def extract_symptoms(text):
     text = text.lower()
     found = []
 
-    # synonyms
     for key, value in symptom_synonyms.items():
         if key in text:
             found.append(value)
 
-    # dataset match
     for symptom in cols:
         if symptom.replace("_", " ") in text:
             found.append(symptom)
 
     return list(set(found))
 
-# ------------------ PREDICTION ------------------
+# ------------------ PREDICT ------------------
 def predict_disease(symptoms):
-    input_vector = np.zeros(len(symptoms_dict))
+    input_vector = pd.DataFrame(
+        [np.zeros(len(cols))],
+        columns=cols
+    )
 
     for s in symptoms:
-        if s in symptoms_dict:
-            input_vector[symptoms_dict[s]] = 1
+        if s in input_vector.columns:
+            input_vector[s] = 1
 
-    probs = model.predict_proba([input_vector])[0]
+    probs = model.predict_proba(input_vector)[0]
 
     top_indices = np.argsort(probs)[-3:][::-1]
 
@@ -90,55 +86,38 @@ def predict_disease(symptoms):
 # ------------------ UI ------------------
 st.set_page_config(page_title="AI Health Assistant", page_icon="💊")
 
-# Sidebar
-st.sidebar.title("👤 User Profile")
-name = st.sidebar.text_input("Enter your name")
-age = st.sidebar.number_input("Enter your age", 1, 120)
+st.sidebar.title("👤 User Details")
+name = st.sidebar.text_input("Name")
+age = st.sidebar.number_input("Age", 1, 120)
 
-# Main
 st.title("💊 AI Health Assistant")
-st.markdown("### Describe your symptoms 👇")
+st.write("Enter your symptoms 👇")
 
-user_input = st.text_input("Example: fever, headache, cough")
+user_input = st.text_input("Example: fever, cough, headache")
 
-if st.button("🔍 Predict Disease"):
+if st.button("Predict"):
 
     if not user_input.strip():
-        st.warning("⚠️ Please enter symptoms")
+        st.warning("Enter symptoms")
     else:
-        with st.spinner("🤖 Analyzing..."):
+        with st.spinner("Thinking..."):
 
             symptoms = extract_symptoms(user_input)
 
             if not symptoms:
-                st.error("❌ No symptoms detected. Try simpler words.")
+                st.error("No symptoms detected")
             else:
                 results = predict_disease(symptoms)
 
-                st.success("🧠 Possible Diseases:")
+                st.success("Possible Diseases:")
 
-                for disease, confidence in results:
-                    st.write(f"➡️ **{disease}** ({confidence}%)")
+                for d, c in results:
+                    st.write(f"➡️ {d} ({c}%)")
 
-                # Low confidence warning
-                if results[0][1] < 30:
-                    st.warning("⚠️ Low confidence prediction. Consult a doctor.")
+                top = results[0][0]
 
-                # Show details for top result
-                top_disease = results[0][0]
+                st.info(description_list.get(top, "No description"))
 
-                description = description_list.get(top_disease, "No description available.")
-                precautions = precaution_dict.get(top_disease, [])
-
-                st.info(f"📖 {description}")
-
-                st.subheader("🛡️ Precautions")
-                if precautions:
-                    for p in precautions:
-                        st.write("✔️", p)
-                else:
-                    st.write("No precautions available")
-
-# Footer
-st.markdown("---")
-st.caption("🚀 Built by Sanket | AI Health Assistant")
+                st.subheader("Precautions")
+                for p in precaution_dict.get(top, []):
+                    st.write("✔️", p)
