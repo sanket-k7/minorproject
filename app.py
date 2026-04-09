@@ -1,23 +1,19 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import streamlit as st
 import pandas as pd
 import numpy as np
 import csv
 import pickle
 
-app = Flask(__name__)
-CORS(app)
-
-print("🚀 Server starting...")
-
 # ------------------ LOAD MODEL ------------------
 model = pickle.load(open("model.pkl", "rb"))
 le = pickle.load(open("label_encoder.pkl", "rb"))
 
-print("✅ Model loaded successfully")
-
 # ------------------ LOAD DATA ------------------
 training = pd.read_csv('Data/Training.csv')
+
+training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
+training = training.loc[:, ~training.columns.duplicated()]
+
 cols = training.columns[:-1]
 
 symptoms_dict = {symptom: idx for idx, symptom in enumerate(cols)}
@@ -32,18 +28,18 @@ def load_metadata():
             for row in csv.reader(f):
                 description_list[row[0]] = row[1]
     except:
-        print("⚠️ Description file missing")
+        pass
 
     try:
         with open('MasterData/symptom_precaution.csv') as f:
             for row in csv.reader(f):
                 precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
     except:
-        print("⚠️ Precaution file missing")
+        pass
 
 load_metadata()
 
-# ------------------ EXTRACT SYMPTOMS ------------------
+# ------------------ FUNCTIONS ------------------
 def extract_symptoms(text):
     text = text.lower()
     found = []
@@ -54,7 +50,7 @@ def extract_symptoms(text):
 
     return list(set(found))
 
-# ------------------ PREDICTION ------------------
+
 def predict_disease(symptoms):
     input_vector = np.zeros(len(symptoms_dict))
 
@@ -67,46 +63,48 @@ def predict_disease(symptoms):
 
     return disease
 
-# ------------------ API ------------------
-@app.route('/chat', methods=['POST'])
-def chat():
-    try:
-        data = request.get_json()
-        message = data.get("message", "")
+# ------------------ UI DESIGN ------------------
 
-        if not message.strip():
-            return jsonify({"response": "⚠️ Please enter symptoms"})
+st.set_page_config(page_title="AI Health Assistant", page_icon="💊")
 
-        symptoms = extract_symptoms(message)
+# Sidebar (User Info)
+st.sidebar.title("👤 User Details")
+name = st.sidebar.text_input("Enter your name")
+age = st.sidebar.number_input("Enter your age", min_value=1, max_value=120)
 
-        if not symptoms:
-            return jsonify({"response": "❌ No symptoms detected"})
+st.title("💊 AI Health Assistant")
+st.write("Enter your symptoms below 👇")
 
-        disease = predict_disease(symptoms)
+# Input box
+user_input = st.text_input("Type symptoms (e.g., fever, headache)")
 
-        description = description_list.get(disease, "No description available.")
-        precautions = precaution_dict.get(disease, [])
+if st.button("Predict"):
+    if not user_input:
+        st.warning("⚠️ Please enter symptoms")
+    else:
+        with st.spinner("🤖 Thinking..."):
 
-        response = f"""
-🦠 Disease: {disease}
+            symptoms = extract_symptoms(user_input)
 
-📖 {description}
+            if not symptoms:
+                st.error("❌ No symptoms detected")
+            else:
+                disease = predict_disease(symptoms)
 
-🛡️ Precautions:
-{', '.join(precautions) if precautions else 'No precautions found'}
-"""
+                description = description_list.get(disease, "No description available.")
+                precautions = precaution_dict.get(disease, [])
 
-        return jsonify({"response": response})
+                st.success(f"🦠 Disease: {disease}")
 
-    except Exception as e:
-        print("❌ ERROR:", e)
-        return jsonify({"response": "❌ Server error"})
+                st.info(f"📖 {description}")
 
-# ------------------ HOME ------------------
-@app.route('/')
-def home():
-    return "✅ Backend running fast 🚀"
+                st.subheader("🛡️ Precautions:")
+                if precautions:
+                    for p in precautions:
+                        st.write("✔️", p)
+                else:
+                    st.write("No precautions found")
 
-# ------------------ RUN ------------------
-if __name__ == '__main__':
-    app.run(debug=True)
+# Footer
+st.markdown("---")
+st.caption("⚡ Powered by Sanket's AI Health Assistant")
