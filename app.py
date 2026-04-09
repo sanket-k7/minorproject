@@ -15,10 +15,9 @@ training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
 training = training.loc[:, ~training.columns.duplicated()]
 
 cols = training.columns[:-1]
-
 symptoms_dict = {symptom: idx for idx, symptom in enumerate(cols)}
 
-# ------------------ LOAD EXTRA FILES ------------------
+# ------------------ LOAD METADATA ------------------
 description_list = {}
 precaution_dict = {}
 
@@ -39,18 +38,36 @@ def load_metadata():
 
 load_metadata()
 
-# ------------------ FUNCTIONS ------------------
+# ------------------ SYNONYMS ------------------
+symptom_synonyms = {
+    "fever": "high_fever",
+    "cold": "chills",
+    "cough": "cough",
+    "headache": "headache",
+    "stomach pain": "stomach_pain",
+    "breathing problem": "breathlessness",
+    "shortness of breath": "breathlessness",
+    "body pain": "muscle_pain"
+}
+
+# ------------------ EXTRACT SYMPTOMS ------------------
 def extract_symptoms(text):
     text = text.lower()
     found = []
 
+    # synonyms
+    for key, value in symptom_synonyms.items():
+        if key in text:
+            found.append(value)
+
+    # dataset match
     for symptom in cols:
         if symptom.replace("_", " ") in text:
             found.append(symptom)
 
     return list(set(found))
 
-
+# ------------------ PREDICTION ------------------
 def predict_disease(symptoms):
     input_vector = np.zeros(len(symptoms_dict))
 
@@ -58,53 +75,70 @@ def predict_disease(symptoms):
         if s in symptoms_dict:
             input_vector[symptoms_dict[s]] = 1
 
-    pred = model.predict([input_vector])[0]
-    disease = le.inverse_transform([pred])[0]
+    probs = model.predict_proba([input_vector])[0]
 
-    return disease
+    top_indices = np.argsort(probs)[-3:][::-1]
 
-# ------------------ UI DESIGN ------------------
+    results = []
+    for i in top_indices:
+        disease = le.inverse_transform([i])[0]
+        confidence = round(probs[i] * 100, 2)
+        results.append((disease, confidence))
 
+    return results
+
+# ------------------ UI ------------------
 st.set_page_config(page_title="AI Health Assistant", page_icon="💊")
 
-# Sidebar (User Info)
-st.sidebar.title("👤 User Details")
+# Sidebar
+st.sidebar.title("👤 User Profile")
 name = st.sidebar.text_input("Enter your name")
-age = st.sidebar.number_input("Enter your age", min_value=1, max_value=120)
+age = st.sidebar.number_input("Enter your age", 1, 120)
 
+# Main
 st.title("💊 AI Health Assistant")
-st.write("Enter your symptoms below 👇")
+st.markdown("### Describe your symptoms 👇")
 
-# Input box
-user_input = st.text_input("Type symptoms (e.g., fever, headache)")
+user_input = st.text_input("Example: fever, headache, cough")
 
-if st.button("Predict"):
-    if not user_input:
+if st.button("🔍 Predict Disease"):
+
+    if not user_input.strip():
         st.warning("⚠️ Please enter symptoms")
     else:
-        with st.spinner("🤖 Thinking..."):
+        with st.spinner("🤖 Analyzing..."):
 
             symptoms = extract_symptoms(user_input)
 
             if not symptoms:
-                st.error("❌ No symptoms detected")
+                st.error("❌ No symptoms detected. Try simpler words.")
             else:
-                disease = predict_disease(symptoms)
+                results = predict_disease(symptoms)
 
-                description = description_list.get(disease, "No description available.")
-                precautions = precaution_dict.get(disease, [])
+                st.success("🧠 Possible Diseases:")
 
-                st.success(f"🦠 Disease: {disease}")
+                for disease, confidence in results:
+                    st.write(f"➡️ **{disease}** ({confidence}%)")
+
+                # Low confidence warning
+                if results[0][1] < 30:
+                    st.warning("⚠️ Low confidence prediction. Consult a doctor.")
+
+                # Show details for top result
+                top_disease = results[0][0]
+
+                description = description_list.get(top_disease, "No description available.")
+                precautions = precaution_dict.get(top_disease, [])
 
                 st.info(f"📖 {description}")
 
-                st.subheader("🛡️ Precautions:")
+                st.subheader("🛡️ Precautions")
                 if precautions:
                     for p in precautions:
                         st.write("✔️", p)
                 else:
-                    st.write("No precautions found")
+                    st.write("No precautions available")
 
 # Footer
 st.markdown("---")
-st.caption("⚡ Powered by Sanket's AI Health Assistant")
+st.caption("🚀 Built by Sanket | AI Health Assistant")
