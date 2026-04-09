@@ -3,9 +3,8 @@ import pandas as pd
 import numpy as np
 import csv
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 
-# ------------------ PAGE CONFIG ------------------
+# ------------------ PAGE ------------------
 st.set_page_config(page_title="AI Health Assistant", layout="wide")
 
 # ------------------ LOAD DATA ------------------
@@ -14,17 +13,14 @@ def load_model():
     X = pd.read_csv("X_train.csv")
     y = pd.read_csv("y_train.csv")
 
-    y = y.values.ravel()
-
-    le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+    y = y.values.ravel()  # convert to 1D
 
     model = RandomForestClassifier(n_estimators=80, random_state=42)
-    model.fit(X, y_encoded)
+    model.fit(X, y)
 
-    return model, le, X.columns
+    return model, X.columns
 
-model, le, cols = load_model()
+model, cols = load_model()
 
 # ------------------ LOAD METADATA ------------------
 @st.cache_data
@@ -56,7 +52,7 @@ symptom_synonyms = {
     "cold": "chills",
     "cough": "cough",
     "headache": "headache",
-    "breath": "breathlessness",
+    "breathing problem": "breathlessness",
     "shortness of breath": "breathlessness",
     "body pain": "muscle_pain"
 }
@@ -66,10 +62,12 @@ def extract_symptoms(text):
     text = text.lower()
     found = []
 
+    # synonyms
     for key, value in symptom_synonyms.items():
         if key in text:
             found.append(value)
 
+    # dataset match
     for symptom in cols:
         if symptom.replace("_", " ") in text:
             found.append(symptom)
@@ -92,7 +90,7 @@ def predict_disease(symptoms):
 
     results = []
     for i in top_indices:
-        disease = le.inverse_transform([i])[0]
+        disease = model.classes_[i]   # ✅ FIXED
         confidence = round(probs[i] * 100, 2)
         results.append((disease, confidence))
 
@@ -102,10 +100,10 @@ def predict_disease(symptoms):
 # ------------------ UI ------------------
 st.title("💊 AI Health Assistant")
 
-# Sidebar (User Details)
+# Sidebar
 st.sidebar.header("👤 User Details")
 name = st.sidebar.text_input("Enter your name")
-age = st.sidebar.number_input("Enter your age", min_value=1, max_value=120)
+age = st.sidebar.number_input("Enter your age", 1, 120)
 
 st.markdown("### Enter your symptoms 👇")
 
@@ -129,7 +127,7 @@ if st.button("Predict"):
             description = description_list.get(top_disease, "No description available")
             precautions = precaution_dict.get(top_disease, [])
 
-            # Show results
+            # RESULT
             st.success(f"🦠 Top Disease: {top_disease}")
 
             st.subheader("📊 Other Possibilities")
