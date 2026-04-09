@@ -7,13 +7,17 @@ from sklearn.ensemble import RandomForestClassifier
 # ------------------ PAGE ------------------
 st.set_page_config(page_title="AI Health Assistant", layout="wide")
 
-# ------------------ LOAD DATA ------------------
+# ------------------ LOAD MODEL ------------------
 @st.cache_resource
 def load_model():
-    X = pd.read_csv("X_train.csv")
-    y = pd.read_csv("y_train.csv")
+    training = pd.read_csv("Data/Training.csv")
 
-    y = y.values.ravel()  # convert to 1D
+    # Remove duplicate columns
+    training.columns = training.columns.str.replace(r"\.\d+$", "", regex=True)
+    training = training.loc[:, ~training.columns.duplicated()]
+
+    X = training.iloc[:, :-1]
+    y = training["prognosis"]   # ✅ REAL DISEASE NAMES
 
     model = RandomForestClassifier(n_estimators=80, random_state=42)
     model.fit(X, y)
@@ -29,14 +33,14 @@ def load_metadata():
     precaution_dict = {}
 
     try:
-        with open("symptom_Description (1).csv") as f:
+        with open("MasterData/symptom_Description.csv") as f:
             for row in csv.reader(f):
                 description_list[row[0]] = row[1]
     except:
         pass
 
     try:
-        with open("symptom_precaution (1).csv") as f:
+        with open("MasterData/symptom_precaution.csv") as f:
             for row in csv.reader(f):
                 precaution_dict[row[0]] = [row[1], row[2], row[3], row[4]]
     except:
@@ -62,12 +66,10 @@ def extract_symptoms(text):
     text = text.lower()
     found = []
 
-    # synonyms
     for key, value in symptom_synonyms.items():
         if key in text:
             found.append(value)
 
-    # dataset match
     for symptom in cols:
         if symptom.replace("_", " ") in text:
             found.append(symptom)
@@ -90,12 +92,11 @@ def predict_disease(symptoms):
 
     results = []
     for i in top_indices:
-        disease = model.classes_[i]   # ✅ FIXED
+        disease = model.classes_[i]   # ✅ NOW RETURNS REAL NAME
         confidence = round(probs[i] * 100, 2)
         results.append((disease, confidence))
 
     return results
-
 
 # ------------------ UI ------------------
 st.title("💊 AI Health Assistant")
@@ -127,7 +128,7 @@ if st.button("Predict"):
             description = description_list.get(top_disease, "No description available")
             precautions = precaution_dict.get(top_disease, [])
 
-            # RESULT
+            # OUTPUT
             st.success(f"🦠 Top Disease: {top_disease}")
 
             st.subheader("📊 Other Possibilities")
